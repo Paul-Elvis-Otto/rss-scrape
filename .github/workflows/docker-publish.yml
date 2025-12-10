@@ -16,6 +16,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Compute image tags (lowercase)
+        run: |
+          IMAGE_NAME="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "IMAGE_LATEST=${IMAGE_NAME}:latest" >> "$GITHUB_ENV"
+          echo "IMAGE_SHA=${IMAGE_NAME}:${GITHUB_SHA}" >> "$GITHUB_ENV"
+
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -32,7 +38,7 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ${{ env.IMAGE_LATEST }}
+            ${{ env.IMAGE_SHA }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
