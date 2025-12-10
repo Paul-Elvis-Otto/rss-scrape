@@ -1,0 +1,49 @@
+services:
+  db:
+    image: mariadb:11
+    container_name: rss_mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_NAME:-rss}
+      MARIADB_USER: ${DB_USER:-rss}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-rss}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  scraper:
+    image: ${IMAGE_NAME:-ghcr.io/paul-elvis-otto/rss-scrape}:latest
+    build: .
+    container_name: rss_scraper
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      SCRAPE_INTERVAL_SECONDS: "600"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    command: ["python", "-m", "app.main"]
+
+  watchtower:
+    image: containrrr/watchtower:1.7.1
+    container_name: watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      WATCHTOWER_POLL_INTERVAL: 300
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_CLEANUP: "true"
+
+volumes:
+  mariadb_data:
